@@ -52,37 +52,36 @@ def constructForwardModel(recontype, imgSize, nrChannels, mask_dir, imgShort, su
     mask = np.reshape(mask, (1,1, mask.shape[0], mask.shape[1]))
     forward.mask = torch.tensor(np.repeat(mask, nrChannels, axis=1), dtype=torch.bool, device=device)
     forwardTrue = forward
-  elif recontype == 'inpaint-eval':
-    # Create forward model that fills in part of image with zeros (change the height/width to control the bounding box)
-    forward = ForwardFillMask(device)
-    maskInd = image_idx % 7
-    if imgSize == 1024:
-        mask = skimage.io.imread('masks_eval/%d.png' % maskInd)
-    else:
-        mask = skimage.io.imread('masks_eval_brains/%d.png' % maskInd)
-    mask = mask[:,:,0] == np.min(mask[:,:,0]) # need to block black
-
-    mask = np.reshape(mask, (1,1, mask.shape[0], mask.shape[1]))
-    forward.mask = torch.tensor(np.repeat(mask, nrChannels, axis=1), dtype=torch.bool, device=device)
-    forwardTrue = forward
-    #print(forward.mask.shape)
-    #asda
-
   else:
     raise ValueError('recontype has to be either none, super-resolution, inpaint')
 
   return forward, forwardTrue
 
-class ConstModule(torch.nn.Linear):
-  def __init__(self, ws): # defined as 0*x + ws = ws. Only bias is optimised, the weights are set to seros.
-    in_features = 0
-    out_features = np.max(list(ws.shape))
-    super(ConstModule, self).__init__( in_features, out_features, bias = True)
-    self.weight = torch.nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
-    self.bias = torch.nn.Parameter(ws)
+# class ConstModule(torch.nn.Linear):
+#   def __init__(self, ws): # defined as 0*x + ws = ws. Only bias is optimised, the weights are set to seros.
+#     in_features = 0
+#     out_features = np.max(list(ws.shape))
+#     super(ConstModule, self).__init__( in_features, out_features, bias = True)
+#     self.weight = torch.nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
+#     self.bias = torch.nn.Parameter(ws)
+#
+#   def reset_parameters(self) -> None:
+#     pass
 
-  def reset_parameters(self) -> None:
-    pass
+
+def getVggFeatures(images, num_channels, vgg16):
+  # Downsample image to 256x256 if it's larger than that. VGG was built for 224x224 images.
+  # if synth_images_down.shape[2] > 256:
+  images_vgg = F.interpolate(images, size=(256, 256), mode='area')
+
+  if num_channels == 1:
+    # if grayscale, move back to RGB to evaluate perceptual loss
+    images_vgg = images_vgg.repeat(1, 3, 1, 1)  # BCWH
+
+  # Features for synth images.
+  features = vgg16(images_vgg, resize_images=False, return_lpips=True)
+  return features
+
 
 def project(
     G,
@@ -128,25 +127,14 @@ def project(
 
     # Features for target image.
     target_images = target.to(device).to(torch.float32)
-    #if target_images.shape[2] > 256:
-    target_images_vgg = F.interpolate(target_images, size=(256, 256), mode='area') #[BCWH]
-
-    print('target_images.shape', target_images.shape)
-    if G.img_channels == 1:
-      # if grayscale, move back to RGB to evaluate perceptual loss
-      target_images_vgg = target_images_vgg.repeat(1,3,1,1) # BCWH
-    print('target_images.shape', target_images.shape)
-
-    target_features = vgg16(target_images_vgg, resize_images=False, return_lpips=True) # vgg16 takes BHW only
-
-
-
+    target_features = getVggFeatures(target_images, G.img_channels, vgg16)
 
     ws_mu = torch.tensor(w_avg.repeat([1, G.mapping.num_ws, 1]), dtype=torch.float32, device=device, requires_grad=True)
     ws_std = torch.tensor(w_std.repeat([1, G.mapping.num_ws, 1]), device=device)
     ws_rho = torch.tensor(torch.log(torch.exp(ws_std) - 1), dtype=torch.float32, device=device, requires_grad=True)
 
-    ws_out = torch.zeros([num_steps] + list(ws_mu.shape[1:]), dtype=torch.float32, device=device)
+    ws_mu_out = torch.zeros([num_steps] + list(ws_mu.shape[1:]), dtype=torch.float32, device=device)
+    ws_std_out = torch.zeros([num_steps] + list(ws_std.shape[1:]), dtype=torch.float32, device=device)
 
     noiseLayers = list(noise_bufs.values())
 
@@ -200,17 +188,7 @@ def project(
           loss = 0
           loss += pixelwise_loss
 
-
-          # Downsample image to 256x256 if it's larger than that. VGG was built for 224x224 images.
-          #if synth_images_down.shape[2] > 256:
-          synth_images_down_vgg = F.interpolate(synth_images_down, size=(256, 256), mode='area')
-
-          if G.img_channels == 1:
-            # if grayscale, move back to RGB to evaluate perceptual loss
-            synth_images_down_vgg = synth_images_down_vgg.repeat(1,3,1,1) # BCWH
-
-          # Features for synth images.
-          synth_features = vgg16(synth_images_down_vgg, resize_images=False, return_lpips=True)
+          synth_features = getVggFeatures(synth_images_down, G.img_channels, vgg16)
 
           perceptual_loss = lambda_perc * (target_features - synth_features).square().mean()
           loss += perceptual_loss
@@ -234,12 +212,12 @@ def project(
 
           loss.backward(create_graph=False)
 
-          return loss, pixelwise_loss, perceptual_loss, w_loss, cosine_loss, theta_loss, synth_images, synth_images_down
+          return loss, pixelwise_loss, perceptual_loss, w_loss, cosine_loss, q_loss, theta_loss, synth_images, synth_images_down
 
-        loss, pixelwise_loss, perceptual_loss, w_loss, cosine_loss, theta_loss, synth_images, synth_images_down = optimizerAdam.step(closure=closure)
+        loss, pixelwise_loss, perceptual_loss, w_loss, cosine_loss, q_loss, theta_loss, synth_images, synth_images_down = optimizerAdam.step(closure=closure)
         logprint(f'step {step+1:>4d}/{num_steps}: tloss {float(loss):<5.4f} pix_loss {float(pixelwise_loss):<5.2f} '
                  f'perc_loss {float(perceptual_loss):<5.2f} w_loss {float(w_loss):<5.2f} cos_loss {float(cosine_loss):<5.2f}  '
-                 f'theta_loss {float(theta_loss):<5.3f}')
+                 f'q_loss {float(q_loss):<5.3f} theta_loss {float(theta_loss):<5.3f}')
 
 
         # save progress so far
@@ -249,7 +227,7 @@ def project(
                    target_res=(G.img_resolution, G.img_resolution))
          for s in range(1,nrS):
            saveImage(image=synth_images[s, :, :, :], filepath='%s_sample%d_step%d.jpg' % (filepath, s, step))
-           saveImage(image=synth_images_down[s, :, :, :], filepath='%s_corrsample%d_step%d.jpg' % (filepath, s, step),
+           saveImage(image=synth_images_down[s, :, :, :], filepath='%s_corruptsample%d_step%d.jpg' % (filepath, s, step),
                      target_res=(G.img_resolution, G.img_resolution))
 
          if recontype.startswith('inpaint'):
@@ -261,28 +239,11 @@ def project(
              saveImage(image=merged[0, :, :, :], filepath='%s_mergedsample%d_step%d.jpg' % (filepath, s, step))
 
         # Save projected W for each optimization step.
-        ws_out[step] = ws_mu.detach()[0]
+        ws_mu_out[step] = ws_mu.detach()[0]
+        ws_std_out[step] = ws_std.detach()[0]
 
 
-    # save the final images at the end
-    saveImage(image=synth_images[0, :, :, :], filepath='%s_clean.jpg' % filepath)
-    saveImage(image=synth_images_down[0, :, :, :], filepath='%s_corrupted.jpg' % filepath,
-              target_res=(G.img_resolution, G.img_resolution))
-    for s in range(1, nrS):
-      saveImage(image=synth_images[s, :, :, :], filepath='%s_sample%d.jpg' % (filepath, s))
-      saveImage(image=synth_images_down[s, :, :, :], filepath='%s_corrsample%d.jpg' % (filepath, s),
-                target_res=(G.img_resolution, G.img_resolution))
-
-    if recontype.startswith('inpaint'):
-      merged = torch.where(forward.mask, synth_images[0, :, :, :], target_images)  # if true, then synth, else target
-      saveImage(image=merged[0, :, :, :], filepath='%s_merged.jpg' % filepath)
-
-      for s in range(1, nrS):
-        merged = torch.where(forward.mask, synth_images[s, :, :, :],
-                             target_images)  # if true, then synth, else target
-        saveImage(image=merged[0, :, :, :], filepath='%s_mergedsample%d.jpg' % (filepath, s))
-
-    return ws_out
+    return ws_mu_out, ws_std_out
 
 def saveImage(image, filepath, target_res=None):
     ''' image = CHW (no batch dimension anymore)'''
@@ -302,8 +263,6 @@ def saveImage(image, filepath, target_res=None):
     pilimg.save(filepath)
 
 #----------------------------------------------------------------------------
-
-
 
 
 @click.command()
@@ -395,9 +354,6 @@ def run_projection(
         forward, _ = constructForwardModel(recontype, G.img_resolution, G.img_channels, masks, filename, 1/superres_factor, image_idx, device)
         image_idx += 1 # for rotating through inpainting masks
 
-        # if image_idx == 1:
-        #   continue
-
         #true_tensor_uint8 = torch.tensor(true_uint8.transpose([2,0,1])[np.newaxis,:], device=device)
         true_tensor_uint8 = torch.tensor(true_uint8.transpose([2,0,1]), device=device)
         print('true_tensor_uint8.shape', true_tensor_uint8.shape)
@@ -406,14 +362,15 @@ def run_projection(
 
         # Optimize projection.
         start_time = perf_counter()
-        projected_w_steps = project(
+        filepath = f'{outdir}/{fnshort}'
+        ws_mu_out, ws_std_out = project(
             G,
             forward=forward,
             target=target_uint8, # pylint: disable=not-callable
             num_steps=num_steps,
             device=device,
             verbose=True,
-            filepath=f'{outdir}/{fnshort}',
+            filepath=filepath,
             recontype=recontype,
             lambda_pix= lambda_pix,
             lambda_perc=lambda_perc,
@@ -428,12 +385,52 @@ def run_projection(
         if save_video:
             video = imageio.get_writer(f'{outdir}/{fnshort}_proj.mp4', mode='I', fps=10, codec='libx264', bitrate='16M')
             print (f'Saving optimization progress video "{outdir}/{fnshort}_proj.mp4"')
-            for projected_w in projected_w_steps:
-                synth_image = G.synthesis(projected_w.unsqueeze(0), noise_mode='const')
+            for ws_mu in ws_mu_out:
+                synth_image = G.synthesis(ws_mu.unsqueeze(0), noise_mode='const')
                 synth_image = (synth_image + 1) * (255/2)
                 synth_image = synth_image.permute(0, 2, 3, 1).clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
                 video.append_data(np.concatenate([true_uint8, synth_image], axis=1))
             video.close()
+
+
+        # save the final images at the end - mean_clean, mean_corrupted, samples_clean, samples_corrupted
+        ws_mu = ws_mu_out[-1].unsqueeze(0)
+        ws_std = ws_std_out[-1].unsqueeze(0)
+        print('ws_mu.shape', ws_mu.shape)
+        print('ws_std.shape', ws_std.shape)
+
+        nrS = 6 # how many samples to take. the first sample will have zero noise, and represent the mean of the posterior
+        eps = torch.randn((nrS - 1, ws_std.shape[1], ws_std.shape[2]), dtype=torch.float32, device=device)
+        zeroNoise = torch.zeros((1, ws_std.shape[1], ws_std.shape[2]), dtype=torch.float32, device=device)
+        eps = torch.cat((zeroNoise, eps), dim=0)
+
+        ws = eps * ws_std + ws_mu
+
+        synth_images = G.synthesis(ws, noise_mode='const')
+        synth_images = (synth_images + 1) * (255 / 2)
+        synth_images_corrupted_mean = forward(synth_images)  # f(G(w))
+
+        # save the mean image (i.e. sample 0 with zero noise)
+        saveImage(image=synth_images[0, :, :, :], filepath='%s_clean.jpg' % filepath)
+        saveImage(image=synth_images_corrupted_mean[0, :, :, :], filepath='%s_corrupted.jpg' % filepath,
+                  target_res=(G.img_resolution, G.img_resolution))
+
+        # save the rest of samples [1, ..., nrS]
+        for s in range(1, nrS):
+          saveImage(image=synth_images[s, :, :, :], filepath='%s_sample%d.jpg' % (filepath, s))
+          saveImage(image=synth_images_corrupted_mean[s, :, :, :], filepath='%s_corruptsample%d.jpg' % (filepath, s),
+                    target_res=(G.img_resolution, G.img_resolution))
+
+        # save merged images for inpainting
+        if recontype.startswith('inpaint'):
+          merged = torch.where(forward.mask, synth_images[0, :, :, :],
+                               target_uint8)  # if true, then synth, else target
+          saveImage(image=merged[0, :, :, :], filepath='%s_merged.jpg' % filepath)
+
+          for s in range(1, nrS):
+            merged = torch.where(forward.mask, synth_images[s, :, :, :],
+                                 target_uint8)  # if true, then synth, else target
+            saveImage(image=merged[0, :, :, :], filepath='%s_mergedsample%d.jpg' % (filepath, s))
 
 
 #----------------------------------------------------------------------------

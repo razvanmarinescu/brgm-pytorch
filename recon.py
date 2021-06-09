@@ -377,8 +377,6 @@ def run_projection(
 
 
 
-      np.savez(f'{outdir}/{fnshort}_projected_w.npz', w=projected_w.unsqueeze(0).cpu().numpy())
-
 #----------------------------------------------------------------------------
 
 if __name__ == "__main__":
