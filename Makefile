@@ -38,39 +38,39 @@ downloadNets:
 	wget https://dl.dropboxusercontent.com/s/p9vgdcn5q3wpcuo/brains.pkl
 
 reconFFHQ:
-	python $(warning) recon.py --inputdir=datasets/ffhq --outdir=outFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor 4
-
+	python $(warning) recon.py --inputdir=datasets/ffhq --outdir=recFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor 16
 
 reconFFHQinp:
-	python $(warning) recon.py  --inputdir=datasets/ffhq --outdir=outFFHQinp --network=ffhq.pkl --recontype=inpaint --masks=masks/1024x1024
+	python $(warning) recon.py  --inputdir=datasets/ffhq --outdir=recFFHQinp --network=ffhq.pkl --recontype=inpaint --masks=masks/1024x1024 --num-steps=501
 
-reconBrainInp:
-	python $(warning) recon.py  --inputdir=datasets/brains --outdir=outbrains --network=brains.pkl --recontype=super-resolution --superres-factor 16
+reconBrain:
+	python $(warning) recon.py  --inputdir=datasets/brains --outdir=recBrainsInp --network=brains.pkl --recontype=super-resolution --superres-factor 16
 
-reconBrains:
-	python $(warning) recon.py  --inputdir=datasets/brains --outdir=outbrains --network=brains.pkl --recontype=inpaint --masks=masks/256x256
+reconBrainsInp:
+	python $(warning) recon.py  --inputdir=datasets/brains --outdir=recBrains --network=brains.pkl --recontype=inpaint --masks=masks/256x256
 
 reconXray:
-	python $(warning) recon.py  --inputdir=datasets/xray --outdir=outxray --network=xray.pkl --recontype=super-resolution --superres-factor 16
+	python $(warning) recon.py  --inputdir=datasets/xray --outdir=recXRAY --network=xray.pkl --recontype=super-resolution --superres-factor 16
 
 reconXrayInp:
-	python $(warning) recon.py  --inputdir=datasets/xray --outdir=outxray --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
+	python $(warning) recon.py  --inputdir=datasets/xray --outdir=recXRAYinp --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
+
+sampleFFHQ:
+	python $(warning) sample_bbb.py --inputdir=datasets/ffhq --outdir=samFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor=256
 
 sampleFFHQinp:
 	python $(warning) sample_bbb.py --inputdir=datasets/ffhq --outdir=samFFHQinp --network=ffhq.pkl --recontype=inpaint --masks=masks/1024x1024
-	
-sampleFFHQ:
-	python $(warning) sample_bbb.py --inputdir=datasets/ffhq --outdir=samFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor=256
- 
-sampleXrayInp:
-	python $(warning) sample_bbb.py --inputdir=datasets/xray --outdir=samXRAYinp --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
 
 sampleXray:
 	python $(warning) sample_bbb.py --inputdir=datasets/xray --outdir=samXRAY --network=xray.pkl --recontype=super-resolution --superres-factor=64
 
+sampleXrayInp:
+	python $(warning) sample_bbb.py --inputdir=datasets/xray --outdir=samXRAYinp --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
+
+sampleBrains:
+	python $(warning) sample_bbb.py --inputdir=datasets/brains --outdir=samBrains --network=brains.pkl --recontype=super-resolution --superres-factor=32
+
 sampleBrainsInp:
 	python $(warning) sample_bbb.py --inputdir=datasets/brains --outdir=samBrainsInp --network=brains.pkl --recontype=inpaint --masks=masks/256x256
 
-sampleBrains:	
-	python $(warning) sample_bbb.py --inputdir=datasets/brains --outdir=samBrains --network=brains.pkl --recontype=super-resolution --superres-factor=32
 
