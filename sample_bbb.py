@@ -57,17 +57,6 @@ def constructForwardModel(recontype, imgSize, nrChannels, mask_dir, imgShort, su
 
   return forward, forwardTrue
 
-# class ConstModule(torch.nn.Linear):
-#   def __init__(self, ws): # defined as 0*x + ws = ws. Only bias is optimised, the weights are set to seros.
-#     in_features = 0
-#     out_features = np.max(list(ws.shape))
-#     super(ConstModule, self).__init__( in_features, out_features, bias = True)
-#     self.weight = torch.nn.Parameter(torch.zeros(out_features, in_features), requires_grad=False)
-#     self.bias = torch.nn.Parameter(ws)
-#
-#   def reset_parameters(self) -> None:
-#     pass
-
 
 def getVggFeatures(images, num_channels, vgg16):
   # Downsample image to 256x256 if it's larger than that. VGG was built for 224x224 images.
@@ -348,7 +337,7 @@ def run_projection(
         true_pil = true_pil.crop(((w - s) // 2, (h - s) // 2, (w + s) // 2, (h + s) // 2))
         true_pil = true_pil.resize((G.img_resolution, G.img_resolution), PIL.Image.LANCZOS)
         true_pil.save(f'{outdir}/{fnshort}_true.jpg')
-        #true_uint8 = np.array(true_pil, dtype=np.uint8).reshape((G.img_resolution, G.img_resolution, -1))
+        # true_uint8 = np.array(true_pil, dtype=np.uint8).reshape((G.img_resolution, G.img_resolution, -1))
         true_uint8 = np.array(true_pil, dtype=np.float).reshape((G.img_resolution, G.img_resolution, -1))
         
         forward, _ = constructForwardModel(recontype, G.img_resolution, G.img_channels, masks, filename, 1/superres_factor, image_idx, device)
@@ -389,15 +378,16 @@ def run_projection(
                 synth_image = G.synthesis(ws_mu.unsqueeze(0), noise_mode='const')
                 synth_image = (synth_image + 1) * (255/2)
                 synth_image = synth_image.permute(0, 2, 3, 1).clamp(0, 255).to(torch.uint8)[0].cpu().numpy()
-                video.append_data(np.concatenate([true_uint8, synth_image], axis=1))
+                video.append_data(np.concatenate([true_uint8.astype(np.uint8), synth_image], axis=1))
             video.close()
 
-
-        # save the final images at the end - mean_clean, mean_corrupted, samples_clean, samples_corrupted
+        print(f'Saving final images: mean_clean, mean_corrupted, samples_clean, samples_corrupted, and the merged images (inpainting only)')
+        # First re-synthesize the images from the sampled latents ws ~ N(ws_mu, ws_std), and also pass them through the corruption model
         ws_mu = ws_mu_out[-1].unsqueeze(0)
         ws_std = ws_std_out[-1].unsqueeze(0)
         print('ws_mu.shape', ws_mu.shape)
         print('ws_std.shape', ws_std.shape)
+
 
         nrS = 6 # how many samples to take. the first sample will have zero noise, and represent the mean of the posterior
         eps = torch.randn((nrS - 1, ws_std.shape[1], ws_std.shape[2]), dtype=torch.float32, device=device)
@@ -405,11 +395,11 @@ def run_projection(
         eps = torch.cat((zeroNoise, eps), dim=0)
 
         ws = eps * ws_std + ws_mu
-
         synth_images = G.synthesis(ws, noise_mode='const')
         synth_images = (synth_images + 1) * (255 / 2)
         synth_images_corrupted_mean = forward(synth_images)  # f(G(w))
 
+        target_images = target_uint8.to(device).to(torch.float32)
         # save the mean image (i.e. sample 0 with zero noise)
         saveImage(image=synth_images[0, :, :, :], filepath='%s_clean.jpg' % filepath)
         saveImage(image=synth_images_corrupted_mean[0, :, :, :], filepath='%s_corrupted.jpg' % filepath,
@@ -424,12 +414,12 @@ def run_projection(
         # save merged images for inpainting
         if recontype.startswith('inpaint'):
           merged = torch.where(forward.mask, synth_images[0, :, :, :],
-                               target_uint8)  # if true, then synth, else target
+                               target_images)  # if true, then synth, else target
           saveImage(image=merged[0, :, :, :], filepath='%s_merged.jpg' % filepath)
 
           for s in range(1, nrS):
             merged = torch.where(forward.mask, synth_images[s, :, :, :],
-                                 target_uint8)  # if true, then synth, else target
+                                 target_images)  # if true, then synth, else target
             saveImage(image=merged[0, :, :, :], filepath='%s_mergedsample%d.jpg' % (filepath, s))
 
 

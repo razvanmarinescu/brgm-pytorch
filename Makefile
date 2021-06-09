@@ -56,7 +56,7 @@ reconXrayInp:
 	python $(warning) recon.py  --inputdir=datasets/xray --outdir=recXRAYinp --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
 
 sampleFFHQ:
-	python $(warning) sample_bbb.py --inputdir=datasets/ffhq --outdir=samFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor=256
+	python $(warning) sample_bbb.py --inputdir=datasets/ffhq --outdir=samFFHQtest --network=ffhq.pkl --recontype=super-resolution --superres-factor=256 --num-steps=11
 
 sampleFFHQinp:
 	python $(warning) sample_bbb.py --inputdir=datasets/ffhq --outdir=samFFHQinp --network=ffhq.pkl --recontype=inpaint --masks=masks/1024x1024
