@@ -247,13 +247,12 @@ def run_projection(
     masks: str,
     save_progress: bool,
 ):
-  """Project given image to the latent space of pretrained network pickle.
+  """Compute the Bayesian MAP estimate of the most-likely reconstruction given a corrupted image and a pre-trained StyleGAN model.
 
-  Examples:
+    Example:
 
-  \b
-  python projector.py --outdir=out --target=~/mytargetimg.png \\
-      --network=https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/ffhq.pkl
+    python -W ignore bayesmap_recon.py --inputdir=datasets/ffhq --outdir=recFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor 64
+
   """
   np.random.seed(seed)
   torch.manual_seed(seed)

@@ -214,13 +214,12 @@ def run_projection(
     save_progress: bool,
     num_samples: int
 ):
-    """Sample multiple reconstructions given a corrupted image and a pre-trained generator model
+    """Sample multiple reconstructions given a corrupted image and a pre-trained generator model.
 
-    Examples:
+    Example:
 
-    \b
-    python projector.py --outdir=out --target=~/mytargetimg.png \\
-        --network=https://nvlabs-fi-cdn.nvidia.com/stylegan2-ada-pytorch/pretrained/ffhq.pkl
+    python -W ignore vi_recon.py --inputdir=datasets/ffhq --outdir=samFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor=64
+
     """
     np.random.seed(seed)
     torch.manual_seed(seed)
