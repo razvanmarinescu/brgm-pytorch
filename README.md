@@ -68,43 +68,69 @@ Clone this github repository:
 git clone https://github.com/razvanmarinescu/brgm-pytorch.git 
 ```
 
-## Download pre-trained models: FFHQ trained on 90\% of data, Xray, Brains
+## Download pre-trained StyleGAN2 & StyleGAN-ADA models
 
+Download ffhq.pkl, xray.pkl and brains.pkl:
 ```
 make downloadNets
 
 ```
 
-## Image reconstruction with pre-trained StyleGAN2 generators
+The FFHQ model differs from NVidia's as it was trained on only 90% of FFHQ, leaving 10% for testing. 
+
+## Image reconstruction through the Bayesian MAP estimate
+
+Super-resolution on different sets of unseen input images, with various super-resolution factors:
+```
+python -W ignore bayesmap_recon.py --inputdir=datasets/ffhq --outdir=recFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor 64
+	
+python -W ignore bayesmap_recon.py  --inputdir=datasets/xray --outdir=recXRAY --network=xray.pkl --recontype=super-resolution --superres-factor 32
+
+python -W ignore bayesmap_recon.py  --inputdir=datasets/brains --outdir=recBrains --network=brains.pkl --recontype=super-resolution --superres-factor 8
+```
 
 
-Super-resolution with pre-trained FFHQ generator, on a set of unseen input images (datasets/ffhq), with super-resolution factor x32. The tag argument is optional, and appends that string to the results folder: 
+Inpainting on all three datasets using given mask files:
 ```
-python -W ignore recon.py --inputdir=datasets/ffhq --outdir=recFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor 16
+python -W ignore bayesmap_recon.py  --inputdir=datasets/ffhq --outdir=recFFHQinp --network=ffhq.pkl --recontype=inpaint --masks=masks/1024x1024
+
+python -W ignore bayesmap_recon.py  --inputdir=datasets/xray --outdir=recXRAYinp --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
+
+python -W ignore bayesmap_recon.py  --inputdir=datasets/brains --outdir=recBrainsInp --network=brains.pkl --recontype=inpaint --masks=masks/256x256
 ```
 
-Inpainting with pre-trained Xray generator (MIMIC III), using mask files from masks/1024x1024/ that match the image names exactly:
+
+## Image reconstruction through Variational Inference
+
+Super-resolution:
 ```
-python recon.py recon-real-images --input=datasets/xray --tag=xray \
- --network=dropbox:xray.pkl --recontype=inpaint --masks=masks/1024x1024
+	python -W ignore vi_recon.py --inputdir=datasets/ffhq --outdir=samFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor=64
+
+	python -W ignore vi_recon.py --inputdir=datasets/xray --outdir=samXRAY --network=xray.pkl --recontype=super-resolution --superres-factor=32
+
+	python -W ignore vi_recon.py --inputdir=datasets/brains --outdir=samBrains --network=brains.pkl --recontype=super-resolution --superres-factor=8
+
 ```
 
-Super-resolution on brain dataset with factor x8:
+
+In-painting:
 ```
-python recon.py recon-real-images --input=datasets/brains --tag=brains \
- --network=dropbox:brains.pkl --recontype=super-resolution --superres-factor 8
+	python -W ignore vi_recon.py --inputdir=datasets/ffhq --outdir=samFFHQinp --network=ffhq.pkl --recontype=inpaint --masks=masks/1024x1024
+
+	python -W ignore vi_recon.py --inputdir=datasets/xray --outdir=samXRAYinp --network=xray.pkl --recontype=inpaint --masks=masks/1024x1024
+
+	python -W ignore vi_recon.py --inputdir=datasets/brains --outdir=samBrainsInp --network=brains.pkl --recontype=inpaint --masks=masks/256x256
 ```
 
-### Running on your images
-For running on your images, pass a new folder with .png/.jpg images to --input. For inpainting, you need to pass an additional masks folder to --masks, which contains a mask file for each image in the --input folder.
+
 
 ## Training new StyleGAN2 generators
 
-Follow the [StyleGAN2 instructions](https://github.com/NVlabs/stylegan2) for how to train a new generator network. In short, given a folder of images , you need to first prepare a TFRecord dataset, and then run the training code:
+Follow the [StyleGAN2-ADA instructions](https://github.com/NVlabs/stylegan2-ada-pytorch) for how to train a new generator network. In short, you need to first create a .zip dataset, and then train the model:
 
 ```
-python dataset_tool.py create_from_images ~/datasets/my-custom-dataset ~/my-custom-images
+python dataset_tool.py --source=datasets/ffhq --dest=myffhq.zip
 
-python run_training.py --num-gpus=8 --data-dir=datasets --config=config-e --dataset=my-custom-dataset --mirror-augment=true
+python train.py --outdir=~/training-runs --data=myffhq.zip --gpus=8
 ```
 
