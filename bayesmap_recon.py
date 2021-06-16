@@ -39,7 +39,7 @@ def constructForwardModel(recontype, imgSize, nrChannels, mask_dir, imgShort, su
 
   elif recontype == 'super-resolution':
     # Create downsampling forward corruption model
-    forward = ForwardDownsample(factor=superres_factor);
+    forward = ForwardDownsample(factor=superres_factor)
     forwardTrue = forward  # res = target resolution
 
   elif recontype == 'inpaint':

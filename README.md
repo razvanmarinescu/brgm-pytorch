@@ -33,19 +33,6 @@ Our method, BRGM, builds on the StyleGAN-ADA Pytorch codebase, so our requiremen
 * 1&ndash;8 high-end NVIDIA GPUs with at least 12 GB of memory. We have done all testing and development using NVIDIA DGX-1 with 8 Tesla V100 GPUs.
 * For running the inference from a pre-trained model, you need 1 GPU with at least 12GB of memory. We ran on NVIDIA Titan Xp. For training a new StyleGAN2-ADA generator, you need 1-8 GPUS.
 
-## Installation from StyleGAN2 Tensorflow environment
-
-If you already have a StyleGAN2 Tensorflow environment in Anaconda, you can clone that environment and additionally install the missing packages: 
-
-```
-# clone environment stylegan2 into brgm
-conda create --name brgm --clone stylegan2
-source activate brgm
-
-# install missing packages
-conda install -c menpo opencv
-conda install scikit-image==0.17.2
-```
 
 ## Installation from scratch with Anaconda
 
@@ -57,8 +44,7 @@ conda create -n brgmp python=3.7
 source activate brgmp
 
 conda install pytorch==1.7.1 -c pytorch 
-pip install click requests tqdm pyspng ninja imageio-ffmpeg==0.4.3 imageio scikit-image opencv-python
-pip install pyro-ppl 
+pip install click requests tqdm pyspng ninja imageio-ffmpeg==0.4.3 imageio scikit-image opencv-python pyro-ppl 
 
 ```
 
@@ -80,7 +66,22 @@ The FFHQ model differs from NVidia's as it was trained on only 90% of FFHQ, leav
 
 ## Image reconstruction through the Bayesian MAP estimate
 
-Super-resolution on different sets of unseen input images, with various super-resolution factors:
+We will run the model on the following images provided in this repo:
+
+```
+ls datasets/*
+
+datasets/ffhq:
+1.png  2.png  3.png  4.png  5.png
+
+datasets/xray:
+1.png  2.png  3.png  4.png  5.png
+
+datasets/brains:
+1.png  2.png  3.png  4.png
+```
+
+Run super-resolution with various super-resolution factors. We need to provide the input directory and the network. 
 ```
 python -W ignore bayesmap_recon.py --inputdir=datasets/ffhq --outdir=recFFHQ --network=ffhq.pkl --recontype=super-resolution --superres-factor 64
 	
@@ -99,8 +100,20 @@ python -W ignore bayesmap_recon.py  --inputdir=datasets/xray --outdir=recXRAYinp
 python -W ignore bayesmap_recon.py  --inputdir=datasets/brains --outdir=recBrainsInp --network=brains.pkl --recontype=inpaint --masks=masks/256x256
 ```
 
+The provided masks can be found below. They need to have the same filename as the images in the input folder.
 
-## Image reconstruction through Variational Inference
+```
+ls masks/*
+ 
+masks/1024x1024:
+0.png  1.png  2.png  3.png  4.png  5.png  6.png
+
+masks/256x256:
+0.png  1.png  2.png  3.png  4.png  5.png  6.png
+```
+
+
+## Reconstructing multiple solutions through Variational Inference
 
 Super-resolution:
 ```
