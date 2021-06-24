@@ -152,3 +152,12 @@ python dataset_tool.py --source=datasets/ffhq --dest=myffhq.zip
 python train.py --outdir=~/training-runs --data=myffhq.zip --gpus=8
 ```
 
+If you use our model, please cite:
+```
+@article{marinescu2020bayesian,
+  title={Bayesian Image Reconstruction using Deep Generative Models},
+  author={Marinescu, Razvan V and Moyer, Daniel and Golland, Polina},
+  journal={arXiv preprint arXiv:2012.04567},
+  year={2020}
+}
+```
