@@ -14,10 +14,11 @@
 
 For inquiries, please create a Github issue. We will reply as soon as we can.
 
-For demos of our BRGM model, see the Colab Notebooks:
- - [Tensorflow Notebook (Bayesian MAP)](https://colab.research.google.com/drive/1G7_CGPHZVGFWIkHOAke4HFg06-tNHIZ4?usp=sharing)
- - [PyTorch Notebook (Bayesian MAP)](https://colab.research.google.com/drive/1xJAor6_Ky36gxIk6ICNP--NMBjSlYKil?usp=sharing)
- - [Pytorch Notebook (Variational Inference)](https://colab.research.google.com/drive/1dDH_bV3aYPSK1ujbPg9MBYf-7_Lbhyrw?usp=sharing)
+For demos of our BRGM model, see these Colab Notebooks:
+  * [Tensorflow](https://colab.research.google.com/drive/1G7_CGPHZVGFWIkHOAke4HFg06-tNHIZ4?usp=sharing)
+  * [Pytorch Bayesian MAP](https://colab.research.google.com/drive/1xJAor6_Ky36gxIk6ICNP--NMBjSlYKil?usp=sharing)
+  * [Pytorch Variational Inference](https://colab.research.google.com/drive/1dDH_bV3aYPSK1ujbPg9MBYf-7_Lbhyrw?usp=sharing)
+  * <span style="color:red">NEW</span> [Try it on your own image](https://colab.research.google.com/drive/1dDH_bV3aYPSK1ujbPg9MBYf-7_Lbhyrw?usp=sharing)
 
 
 ## News
