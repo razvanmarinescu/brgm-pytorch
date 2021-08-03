@@ -154,6 +154,54 @@ python dataset_tool.py --source=datasets/ffhq --dest=myffhq.zip
 python train.py --outdir=~/training-runs --data=myffhq.zip --gpus=8
 ```
 
+## Re-generating the same cross-validation data split
+
+### FFHQ
+
+Our models were all trained on 90% of the data, leaving 10% for testing. If you'd like to re-create the same train/test split, see below:
+
+Assume all FFHQ images are in a (sym-linked) folder called *ffhq* in the current repo. To generate the test_set, run:
+```
+mkdir ffhq_test; cd ffhq_test
+
+cat ../train-test_splits/ffhq_test.txt | xargs -I {} ln -s ../ffhq/{} {} 
+```
+
+This uses the file list under ffhq_test.txt to create symlinks. For the training set, the commands are similar:
+
+```
+mkdir ffhq_train; cd ffhq_train
+
+cat ../train-test_splits/ffhq_train.txt | xargs -I {} ln -s ../ffhq/{} {} 
+```
+
+### Chest X-Ray dataset
+
+
+For the MIMIC Chest X-Ray dataset (assuming all images are in a folder *xray* in the current repo):
+
+```
+mkdir xray_test; cd xray_test
+
+cat ../train-test_splits/xray_test.txt | xargs -I {} ln -s ../xray/{} {} 
+```
+
+```
+mkdir xray_train; cd xray_train
+
+cat ../train-test_splits/xray_train.txt | xargs -I {} ln -s ../xray/{} {} 
+```
+
+### Brains dataset
+
+For the Brain dataset (which combines ADNI, AIBL, PPMI, OASIS and ABIDE), we also provide a file-list of the scans used under `train-test_splits/brains_{train,test}.txt`. 
+
+
+## Acknowledgements
+
+Our work was funded by NIH and the MIT-IBM Watson Lab.
+
+
 If you use our model, please cite:
 ```
 @article{marinescu2020bayesian,
