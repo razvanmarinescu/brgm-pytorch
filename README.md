@@ -19,7 +19,7 @@ For demos of our BRGM model, see these Colab Notebooks:
   * [Tensorflow](https://colab.research.google.com/drive/1G7_CGPHZVGFWIkHOAke4HFg06-tNHIZ4?usp=sharing)
   * [Pytorch Bayesian MAP](https://colab.research.google.com/drive/1xJAor6_Ky36gxIk6ICNP--NMBjSlYKil?usp=sharing)
   * [Pytorch Variational Inference](https://colab.research.google.com/drive/1dDH_bV3aYPSK1ujbPg9MBYf-7_Lbhyrw?usp=sharing)
-  * **NEW**: [Try BRGM on your own image](https://colab.research.google.com/drive/1dDH_bV3aYPSK1ujbPg9MBYf-7_Lbhyrw?usp=sharing)
+  * **NEW**: [Try BRGM on your own image](https://colab.research.google.com/drive/1qQh21yF3EfBHsYTYVwlI2KheQePHhhbq?usp=sharing)
 
 
 ## News
